@@ -1,3 +1,9 @@
+// Get references to DOM elements that will be manipulated
+const questionsElement = document.getElementById("questions");
+const submitButton = document.getElementById("submit");
+const scoreElement = document.getElementById("score");
+
+// Quiz data - Array of question objects with their properties
 const questions = [
   {
     question: "What is the capital of France?",
@@ -26,82 +32,77 @@ const questions = [
   },
 ];
 
-const questionsElement = document.getElementById("questions");
-const submitButton = document.getElementById("submit");
-const scoreElement = document.getElementById("score");
-
-// Load previously selected answers (if any) from sessionStorage
-let userAnswers = JSON.parse(sessionStorage.getItem("progress")) || {};
+// Initialize userAnswers array from sessionStorage or create empty array if none exists
+// sessionStorage persists data for the duration of the page session but is cleared when the page is closed
+let userAnswers = JSON.parse(sessionStorage.getItem("progress")) || [];
 
 // Display the quiz questions and choices
 function renderQuestions() {
-  questionsElement.innerHTML = ""; // Clear if already rendered
-
+  // Loop through each question in the questions array
   for (let i = 0; i < questions.length; i++) {
     const question = questions[i];
-    const questionContainer = document.createElement("div");
 
-    const questionText = document.createElement("p");
-    questionText.textContent = `${i + 1}. ${question.question}`;
-    questionContainer.appendChild(questionText);
+    // Create a container element for each question
+    const questionElement = document.createElement("div");
 
+    // Add the question text to the container
+    const questionText = document.createTextNode(question.question);
+    questionElement.appendChild(questionText);
+
+    // Loop through each choice for the current question
     for (let j = 0; j < question.choices.length; j++) {
       const choice = question.choices[j];
 
-      const label = document.createElement("label");
-      const choiceInput = document.createElement("input");
-      choiceInput.type = "radio";
-      choiceInput.name = `question-${i}`;
-      choiceInput.value = choice;
+      // Create a radio button for each choice
+      const choiceElement = document.createElement("input");
+      choiceElement.setAttribute("type", "radio");
+      choiceElement.setAttribute("name", `question-${i}`);
+      choiceElement.setAttribute("value", choice);
 
-      // Restore checked state from sessionStorage
-      if (userAnswers[`question-${i}`] === choice) {
-        choiceInput.checked = true;
+      // If user previously selected this choice, check the radio button
+      if (userAnswers[i] === choice) {
+        choiceElement.setAttribute("checked", true);
       }
 
-      // Save selection on change
-      choiceInput.addEventListener("change", () => {
-        userAnswers[`question-${i}`] = choice;
+      // Add change event listener to save the user's selection to sessionStorage
+      choiceElement.addEventListener("change", (event) => {
+        const selectedValue = event.target.value;
+        userAnswers[i] = selectedValue;
+        // Save progress to sessionStorage so user can continue later if they refresh the page
         sessionStorage.setItem("progress", JSON.stringify(userAnswers));
       });
 
-      label.appendChild(choiceInput);
-      label.append(` ${choice}`);
-      questionContainer.appendChild(label);
-      questionContainer.appendChild(document.createElement("br"));
+      // Add the choice radio button and text to the question container
+      const choiceText = document.createTextNode(choice);
+      questionElement.appendChild(choiceElement);
+      questionElement.appendChild(choiceText);
     }
 
-    questionsElement.appendChild(questionContainer);
+    // Add the completed question container to the questions element in the DOM
+    questionsElement.appendChild(questionElement);
   }
 }
 
-// Handle quiz submission
-function submitQuiz() {
+// Call the function to display questions when the page loads
+renderQuestions();
+
+// Function to calculate and display the user's score
+function displayScore() {
   let score = 0;
 
+  // Compare each user answer with the correct answer
   questions.forEach((question, index) => {
-    const selected = userAnswers[`question-${index}`];
-    if (selected === question.answer) {
+    if (userAnswers[index] === question.answer) {
       score++;
     }
   });
 
+  // Display the score to the user
   scoreElement.textContent = `Your score is ${score} out of ${questions.length}.`;
 
-  // Save final score in localStorage
+  // Save the score to localStorage for persistence across browser sessions
   localStorage.setItem("score", score);
 }
 
-// On page load, render the questions
-renderQuestions();
-
-// If score was previously submitted and stored, show it
-const savedScore = localStorage.getItem("score");
-if (savedScore !== null) {
-  scoreElement.textContent = `Your score is ${savedScore} out of ${questions.length}.`;
-}
-
-// Submit button event
-submitButton.addEventListener("click", submitQuiz);
-
-
+// Add click event listener to the submit button to calculate and display the score
+submitButton.addEventListener("click", displayScore);
