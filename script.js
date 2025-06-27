@@ -103,3 +103,85 @@ if (savedScore !== null) {
 
 // Submit button event
 submitButton.addEventListener("click", submitQuiz);
+
+describe('Quiz Application Tests', () => {
+  beforeEach(() => {
+    cy.visit('http://localhost:3000'); // Adjust to your app's URL or local path
+    cy.clearLocalStorage();
+    cy.window().then((win) => win.sessionStorage.clear());
+  });
+
+  it('✅ Test 1: Checking Questions and UI Elements', () => {
+    cy.get("div#questions").should("exist");
+    cy.get("div#questions > div").should("have.length", 5); // 5 questions
+    cy.get("input[type='radio']").should('have.length.at.least', 15); // Multiple radio buttons
+    cy.get("button#submit").should("exist");
+    cy.get("div#score").should("be.empty");
+  });
+
+  it('✅ Test 2: Checking Session Storage (Progress Save)', () => {
+    // Select answers for questions 0 and 1
+    cy.get("input[name='question-0']").eq(0).check({ force: true }); // e.g., Paris
+    cy.get("input[name='question-1']").eq(2).check({ force: true }); // e.g., Denali
+
+    // Reload page
+    cy.reload();
+
+    // Verify that answers are still selected
+    cy.get("input[name='question-0']").eq(0).should("be.checked");
+    cy.get("input[name='question-1']").eq(2).should("be.checked");
+
+    // Check sessionStorage content
+    cy.window().then((win) => {
+      const progress = JSON.parse(win.sessionStorage.getItem("progress"));
+      expect(progress).to.have.property("question-0");
+      expect(progress).to.have.property("question-1");
+    });
+  });
+
+  it('✅ Test 3: Final Score Calculation & Local Storage Check', () => {
+    const correctAnswers = {
+      0: "Paris",
+      1: "Everest",
+      2: "Russia",
+      3: "Jupiter",
+      4: "Ottawa"
+    };
+
+    // Select correct answers
+    Object.entries(correctAnswers).forEach(([qIndex, answer]) => {
+      cy.get(`input[name='question-${qIndex}'][value="${answer}"]`).check({ force: true });
+    });
+
+    // Submit the quiz
+    cy.get("button#submit").click();
+
+    // Check that the score is displayed correctly
+    cy.get("div#score").should("contain", "Your score is 5 out of 5");
+
+    // Check that score is saved in localStorage
+    cy.window().then((win) => {
+      expect(win.localStorage.getItem("score")).to.eq("5");
+    });
+  });
+
+  it('✅ Edge Case: Partial Submission', () => {
+    // Only answer one question
+    cy.get("input[name='question-0'][value='Paris']").check({ force: true });
+    cy.get("button#submit").click();
+
+    // Verify partial score
+    cy.get("div#score").should("contain", "Your score is 1 out of 5");
+  });
+
+  it('✅ Edge Case: Refresh After Submit Shows Score', () => {
+    // Submit answer
+    cy.get("input[name='question-0'][value='Paris']").check({ force: true });
+    cy.get("button#submit").click();
+
+    // Reload and verify score still shows
+    cy.reload();
+    cy.get("div#score").should("contain", "Your score is");
+  });
+});
+
